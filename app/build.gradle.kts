@@ -1,20 +1,65 @@
+import java.util.Properties
+import java.io.IOException
+import java.io.FileInputStream
+
 plugins {
     id("com.android.application")
     id("com.google.protobuf") version "0.9.4"
+}
+
+val commitCount by project.extra {
+    execCommand("git rev-list --count HEAD")?.toInt()
+            ?: throw GradleException("Unable to get number of commits. Make sure git is initialized.")
+}
+
+val latestTag by project.extra {
+    execCommand("git describe")
+            ?: throw GradleException(
+                    "Unable to get version name using git describe.\n" +
+                            "Make sure you have at least one annotated tag and git is initialized.\n" +
+                            "You can create an annotated tag with: git tag -a 1.0 -m \"1.0\""
+            )
+}
+
+// Create a variable called keystorePropertiesFile, and initialize it to your
+// keystore.properties file, in the rootProject folder.
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+
+// Initialize a new Properties() object called keystoreProperties.
+val keystoreProperties = Properties()
+
+// Load your keystore.properties file into the keystoreProperties object.
+try {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+} catch (ignore: IOException) {
 }
 
 android {
     namespace = "io.github.nvcex.android"
     compileSdk = 34
 
+    if (!keystoreProperties.isEmpty) {
+        signingConfigs {
+            create("release") {
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
+                storeFile = file(keystoreProperties["storeFile"] as String)
+                storePassword = keystoreProperties["storePassword"] as String
+            }
+        }
+    }
+
     defaultConfig {
         applicationId = "io.github.nvcex.android"
         minSdk = 29
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = commitCount
+        versionName = latestTag.removePrefix("v")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        if (!keystoreProperties.isEmpty) {
+            signingConfig = signingConfigs.getByName("release")
+        }
     }
 
     buildTypes {
@@ -70,4 +115,12 @@ dependencies {
 
     compileOnly("io.github.libxposed:api:100")
     implementation("io.github.libxposed:service:100-1.0.0")
+}
+
+fun execCommand(command: String): String? {
+    val cmd = command.split(" ").toTypedArray()
+    val process = ProcessBuilder(*cmd)
+            .redirectOutput(ProcessBuilder.Redirect.PIPE)
+            .start()
+    return process.inputStream.bufferedReader().readLine()?.trim()
 }
