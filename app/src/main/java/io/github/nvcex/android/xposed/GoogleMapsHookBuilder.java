@@ -191,7 +191,7 @@ public class GoogleMapsHookBuilder extends AbstactHookBuilder {
         if (clsNetworkTtsQueueManager.get() == null) {
             ModuleMain.module.log("NetworkTtsQueueManager not found");
         }
-        ModuleMain.module.log("NetworkTtsQueueManager = " + clsNetworkTtsQueueManager);
+        ModuleMain.module.log("NetworkTtsQueueManager = " + clsNetworkTtsQueueManager.get());
 
         final Method methodGetGuidanceText = Arrays.stream(clsNetworkTtsQueueManager.get().getDeclaredMethods())
                 .filter(m -> Modifier.isStatic(m.getModifiers()))

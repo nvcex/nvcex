@@ -168,7 +168,12 @@ public abstract class AbstactHookBuilder {
                     return update();
                 } else {
                     try {
-                        return moduleLoadedParam.getClassLoader().loadClass(className);
+                        var clazz = moduleLoadedParam.getClassLoader().loadClass(className);
+                        if (p.test(clazz)) {
+                            return clazz;
+                        } else {
+                            return update();
+                        }
                     } catch (ClassNotFoundException ignore) {
                         return update();
                     }
@@ -197,7 +202,12 @@ public abstract class AbstactHookBuilder {
                     List<Class<?>> ret = new ArrayList<>();
                     try {
                         for (var className : classNames) {
-                            ret.add(moduleLoadedParam.getClassLoader().loadClass(className));
+                            var clazz = moduleLoadedParam.getClassLoader().loadClass(className);
+                            if (p.test(clazz)) {
+                                ret.add(clazz);
+                            } else {
+                                return update();
+                            }
                         }
                         return ret;
                     } catch (ClassNotFoundException ignore) {
@@ -245,11 +255,15 @@ public abstract class AbstactHookBuilder {
 
     public static Predicate<Executable> matchParam(int index, Class<?> cls) {
         return method -> {
-            var params = method.getParameterTypes();
-            if (index < params.length) {
-                return params[index].equals(cls);
+            try {
+                var params = method.getParameterTypes();
+                if (index < params.length) {
+                    return params[index].equals(cls);
+                }
+                return false;
+            } catch (NoClassDefFoundError e) {
+                return false;
             }
-            return false;
         };
     }
 
