@@ -1,7 +1,12 @@
 package io.github.nvcex.android.xposed;
 
 import android.app.Application;
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.Intent;
+import android.content.ServiceConnection;
 import android.content.SharedPreferences;
+import android.os.IBinder;
 
 import androidx.annotation.NonNull;
 
@@ -14,6 +19,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Method;
 
+import io.github.nvcex.android.SynthesizeService;
 import io.github.nvcex.android.VoiceVoxEngineApi;
 import io.github.libxposed.api.XposedInterface;
 import io.github.libxposed.api.XposedModule;
@@ -208,7 +214,20 @@ public class ModuleMain extends XposedModule {
                 log("install canned message bundle failed", ioe);
             }
         }
+        Intent intent = new Intent("io.github.nvcex.android.SYNTHESIZE");
+        intent.setPackage("io.github.nvcex.android");
+        ServiceConnection connection = new ServiceConnection() {
+            @Override
+            public void onServiceConnected(ComponentName name, IBinder service) {
+                log("onServiceConnected: "+ name);
+            }
+
+            @Override
+            public void onServiceDisconnected(ComponentName name) {
+                log("onServiceDisconnected: "+ name);
+            }
+        };
+        log("connecting Service");
+        application.bindService(intent, connection, Context.BIND_AUTO_CREATE);
     }
-
-
 }
