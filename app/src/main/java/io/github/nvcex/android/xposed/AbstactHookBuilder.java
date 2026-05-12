@@ -28,9 +28,6 @@ import java.util.stream.Stream;
 
 import io.github.libxposed.api.XposedInterface;
 import io.github.libxposed.api.XposedModuleInterface;
-import io.github.libxposed.api.annotations.AfterInvocation;
-import io.github.libxposed.api.annotations.BeforeInvocation;
-import io.github.libxposed.api.annotations.XposedHooker;
 
 public abstract class AbstactHookBuilder {
     protected final XposedModuleInterface.PackageLoadedParam moduleLoadedParam;
@@ -287,38 +284,29 @@ public abstract class AbstactHookBuilder {
         };
     }
 
-
-    @XposedHooker
     static class InspectHook implements XposedInterface.Hooker
     {
-        @BeforeInvocation
-        public static InspectHook beforeInvocation(XposedInterface.BeforeHookCallback callback) {
+        public static void before(@NonNull XposedInterface.BeforeHookCallback callback) {
             ModuleMain.module.log("method " + callback.getMember() + " called with " + List.of(callback.getArgs()));
-            return new InspectHook();
         }
 
-        @AfterInvocation
-        public static void afterInvocation(XposedInterface.AfterHookCallback callback, InspectHook context) {
+        public static void after(@NonNull XposedInterface.AfterHookCallback callback) {
             ModuleMain.module.log("method " + callback.getMember() + " return with " + callback.getResult());
         }
     }
 
-    @XposedHooker
-    private static class InspectCallStackHook implements XposedInterface.Hooker
+    static class InspectCallStackHook implements XposedInterface.Hooker
     {
-        @BeforeInvocation
-        public static InspectCallStackHook beforeInvocation(XposedInterface.BeforeHookCallback callback) {
+        public static void before(@NonNull XposedInterface.BeforeHookCallback callback) {
             ModuleMain.module.log("method " + callback.getMember() + " called with " + List.of(callback.getArgs()));
             try {
                 throw new Exception();
             } catch (Exception e) {
                 ModuleMain.module.log("stacktrace", e);
             }
-            return new InspectCallStackHook();
         }
 
-        @AfterInvocation
-        public static void afterInvocation(XposedInterface.AfterHookCallback callback, InspectCallStackHook context) {
+        public static void after(@NonNull XposedInterface.AfterHookCallback callback) {
             ModuleMain.module.log("method " + callback.getMember() + " return with " + callback.getResult());
         }
     }
