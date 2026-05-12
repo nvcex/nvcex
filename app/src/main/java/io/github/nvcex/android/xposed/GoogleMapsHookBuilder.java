@@ -60,8 +60,20 @@ public class GoogleMapsHookBuilder extends AbstactHookBuilder {
             // public final class NetworkTtsQueueRunner implements Runnable
             // {
             //      public NetworkTtsQueueRunner(
-            //          PriorityBlockingQueue p0,
+            //          Unknown0 p0,
             //          Unknown1 p1,
+            //          Unknown2 p2,
+            //          Unknown3 p3,
+            //          Executor p4,
+            //          boolean p5,
+            //          Executor p6,
+            //          TtsStat p7,
+            //          TtsSynthesizer p8,
+            //          TtsSynthesizer p9,
+            //          TtsSynthesizer p10,
+            //          Unknown11 p11,
+            //          Unknown11 p12) {
+            //      }
             //          TtsTempManager p2,
             //          ApplicationParameters p3,
             //          Unknown2 p4,
@@ -77,10 +89,10 @@ public class GoogleMapsHookBuilder extends AbstactHookBuilder {
             return cls -> Stream.of(cls)
                     .filter(implementExact(Runnable.class))
                     .flatMap(GoogleMapsHookBuilder::getUniqueConstructor)
-                    .filter(matchParam(0, PriorityBlockingQueue.class))
-                    .filter(matchParam(5, Executor.class))
+                    .filter(matchParam(4, Executor.class))
                     .filter(matchParam(6, Executor.class))
-                    .anyMatch(matchParam(8, 9));
+                    .filter(matchParam(8, 9))
+                    .anyMatch(matchParam(8, 10));
         }
 
         static Predicate<Class<?>> NetworkTtsQueueManager(NetworkTtsQueueRunnerContents c) {
@@ -139,10 +151,10 @@ public class GoogleMapsHookBuilder extends AbstactHookBuilder {
             public final Method synthesizeToFile;
 
             public TtsSynthesizerContents(Class<?> cls) {
-                // boolean TtsSynthesizer#synthesizeToFile(VoiceAlert alert, String path)
+                // boolean TtsSynthesizer#synthesizeToFile(VoiceAlert alert, Coordinate p1, String path)
                 this.synthesizeToFile = Arrays.stream(cls.getMethods())
-                        .filter(method -> method.getParameterCount() == 2)
-                        .filter(matchParam(1, String.class))
+                        .filter(method -> method.getParameterCount() == 3)
+                        .filter(matchParam(2, String.class))
                         .findFirst().orElse(null);
                 if (this.synthesizeToFile == null) {
                     ModuleMain.module.log("method synthesizeToFile not found");
@@ -153,7 +165,59 @@ public class GoogleMapsHookBuilder extends AbstactHookBuilder {
         }
     }
 
+    private static boolean dev = true;
+
+    private void devHook() throws Exception
+    {
+        if (!dev) {
+            return;
+        }
+
+        ModuleMain.module.log("!!! dev mode");
+
+//        classes().limit(10).forEach(cls -> ModuleMain.module.log("class: " + cls.getName()));
+//        final Cached<Class<?>> clsX = findClass(
+//                "X",
+//                cls -> cls.getName().equals("bqbo")
+//        );
+//        for (var m : clsX.get().getDeclaredMethods()) {
+//            ModuleMain.module.hook(m, InspectCallStackHook.class);
+//        }
+
+//        var clsMediaPlayer = classLoader().loadClass("android.media.MediaPlayer");
+//        for (var m : clsMediaPlayer.getDeclaredMethods()) {
+//            ModuleMain.module.hook(m, InspectCallStackHook.class);
+//        }
+//        var clsTextToSpeech = classLoader().loadClass("bphd");
+//        for (var m : clsTextToSpeech.getDeclaredMethods()) {
+//            ModuleMain.module.hook(m, TTSHook.class);
+//        }
+
+//        var cls_cbev = classLoader().loadClass("cbev");
+//        for (var m : cls_cbev.getDeclaredMethods()) {
+//            ModuleMain.module.hook(m, InspectCallStackHook.class);
+//        }
+
+        var clsTTS1 = classLoader().loadClass("bpkf");
+        for (var m : clsTTS1.getDeclaredMethods()) {
+            ModuleMain.module.hook(m, InspectCallStackHook.class);
+        }
+        var clsTTS2 = classLoader().loadClass("bpkg");
+        for (var m : clsTTS2.getDeclaredMethods()) {
+            ModuleMain.module.hook(m, InspectCallStackHook.class);
+        }
+        var clsTTS3 = classLoader().loadClass("bpkl");
+        for (var m : clsTTS3.getDeclaredMethods()) {
+            ModuleMain.module.hook(m, InspectCallStackHook.class);
+        }
+
+    }
+
     public void run() {
+        try {
+            devHook();
+        } catch (Exception e) {
+        }
         loadCache();
         runApplicationCapture();
 
@@ -284,7 +348,7 @@ public class GoogleMapsHookBuilder extends AbstactHookBuilder {
                 } else {
                     var api = p.getVoiceVoxEngine();
                     var p1 = callback.getArgs()[0];
-                    var path = (String) callback.getArgs()[1];
+                    var path = (String) callback.getArgs()[2];
                     boolean ret = false;
                     try {
                         Field f = p1.getClass().getField("a");

@@ -304,7 +304,7 @@ public abstract class AbstactHookBuilder {
     }
 
     @XposedHooker
-    private static class InspectCallStackHook implements XposedInterface.Hooker
+    static class InspectCallStackHook implements XposedInterface.Hooker
     {
         @BeforeInvocation
         public static InspectCallStackHook beforeInvocation(XposedInterface.BeforeHookCallback callback) {
