@@ -1,6 +1,7 @@
 package io.github.nvcex.android.xposed;
 
 import android.app.Application;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 
@@ -8,6 +9,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -15,14 +17,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.Executor;
-import java.util.concurrent.PriorityBlockingQueue;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 import io.github.libxposed.api.XposedInterface;
 import io.github.libxposed.api.XposedModuleInterface;
 
-public class GoogleMapsHookBuilder extends AbstactHookBuilder {
+public class GoogleMapsHookBuilder extends AbstractHookBuilder {
     public static final int NR_CLASSES = 100000;
 
     protected GoogleMapsHookBuilder(@NonNull XposedModuleInterface.PackageLoadedParam param) {
@@ -71,17 +72,6 @@ public class GoogleMapsHookBuilder extends AbstactHookBuilder {
             //          Unknown11 p11,
             //          Unknown11 p12) {
             //      }
-            //          TtsTempManager p2,
-            //          ApplicationParameters p3,
-            //          Unknown2 p4,
-            //          Executor p5,
-            //          Executor p6,
-            //          TtsStat p7,
-            //          TtsSynthesizer p8,
-            //          TtsSynthesizer p9,
-            //          Unknown3 p10,
-            //          NazoTriple p11) {
-            ///     }
             // }
             return cls -> Stream.of(cls)
                     .filter(implementExact(Runnable.class))
@@ -133,13 +123,13 @@ public class GoogleMapsHookBuilder extends AbstactHookBuilder {
 
             public NetworkTtsQueueRunnerContents(Class<?> cls) {
                 this.clazz = cls;
-                ModuleMain.module.log("class NetworkTtsQueueRunner = " + cls.getName());
+                ModuleMain.module.log(Log.INFO, "GoogleMapsHookBuilder","class NetworkTtsQueueRunner = " + cls.getName());
                 this.constructor = cls.getDeclaredConstructors()[0];
-                ModuleMain.module.log("NetworkTtsQueueRunner.<init> = " + this.constructor);
+                ModuleMain.module.log(Log.INFO, "GoogleMapsHookBuilder","NetworkTtsQueueRunner.<init> = " + this.constructor);
                 this.ApplicationParameters = this.constructor.getParameterTypes()[2];
                 this.TtsStat = this.constructor.getParameterTypes()[7];
                 this.TtsSynthesizer = this.constructor.getParameterTypes()[8];
-                ModuleMain.module.log("interface TtsSynthesizer = " + this.TtsSynthesizer);
+                ModuleMain.module.log(Log.INFO, "GoogleMapsHookBuilder","interface TtsSynthesizer = " + this.TtsSynthesizer);
             }
         }
 
@@ -154,17 +144,17 @@ public class GoogleMapsHookBuilder extends AbstactHookBuilder {
                         .filter(matchParam(2, String.class))
                         .findFirst().orElse(null);
                 if (this.synthesizeToFile == null) {
-                    ModuleMain.module.log("method synthesizeToFile not found");
+                    ModuleMain.module.log(Log.ERROR, "GoogleMapsHookBuilder","method synthesizeToFile not found");
                     this.StructuredText = null;
                     return;
                 }
-                ModuleMain.module.log("method synthesizeToFile = " + this.synthesizeToFile);
+                ModuleMain.module.log(Log.INFO, "GoogleMapsHookBuilder","method synthesizeToFile = " + this.synthesizeToFile);
                 this.StructuredText = this.synthesizeToFile.getParameterTypes()[0];
             }
         }
     }
 
-    private static boolean dev = true;
+    private static final boolean dev = true;
 
     private void devHook() throws Exception
     {
@@ -172,7 +162,7 @@ public class GoogleMapsHookBuilder extends AbstactHookBuilder {
             return;
         }
 
-        ModuleMain.module.log("!!! dev mode");
+        ModuleMain.module.log(Log.INFO, "GoogleMapsHookBuilder","!!! dev mode");
 
 //        classes().limit(10).forEach(cls -> ModuleMain.module.log("class: " + cls.getName()));
 //        final Cached<Class<?>> clsX = findClass(
@@ -218,33 +208,33 @@ public class GoogleMapsHookBuilder extends AbstactHookBuilder {
         } catch (Exception e) {
         }
         loadCache();
-        runApplicationCapture();
+        //runApplicationCapture();
 
         final Cached<Class<?>> clsNetworkTtsQueueRunner = findClass(
                 "NetworkTtsQueueRunner",
                 Specs.NetworkTtsQueueRunner());
 
         if (clsNetworkTtsQueueRunner.get() == null) {
-            ModuleMain.module.log("NetworkTtsQueueRunner not found");
+            ModuleMain.module.log(Log.INFO, "GoogleMapsHookBuilder","NetworkTtsQueueRunner not found");
             return;
         }
         final var contentsNetworkTtsQueueRunner = new Specs.NetworkTtsQueueRunnerContents(clsNetworkTtsQueueRunner.get());
 
-        ModuleMain.module.hook(contentsNetworkTtsQueueRunner.constructor, InspectHook.class);
+        inspectHook(contentsNetworkTtsQueueRunner.constructor, false);
 
         final var contentsTtsSynthesizer = new Specs.TtsSynthesizerContents(contentsNetworkTtsQueueRunner.TtsSynthesizer);
 
         final Cached<List<Class<?>>> TtsSynthesizerImpls = findClasses("TtsSynthesizerImpls",
                 implementExact(contentsNetworkTtsQueueRunner.TtsSynthesizer));
         for (var impl : TtsSynthesizerImpls.get()) {
-            ModuleMain.module.log("class implements TtsSynthesizer = " + impl);
+            ModuleMain.module.log(Log.INFO, "GoogleMapsHookBuilder","class implements TtsSynthesizer = " + impl);
             var method = getOverrideMethod(impl, contentsTtsSynthesizer.synthesizeToFile);
             if (method == null) {
-                ModuleMain.module.log("synthesizeToFile not found: " + impl);
+                ModuleMain.module.log(Log.ERROR, "GoogleMapsHookBuilder","synthesizeToFile not found: " + impl);
                 continue;
             }
-            ModuleMain.module.log("hook synthesizeToFile: " + method);
-            ModuleMain.module.hook(method, SynthesizeHook.class);
+            ModuleMain.module.log(Log.INFO, "GoogleMapsHookBuilder","hook synthesizeToFile: " + method);
+            synthesizeHook(method);
         }
 
         final Cached<Class<?>> clsNetworkTtsQueueManager = findClass(
@@ -252,9 +242,9 @@ public class GoogleMapsHookBuilder extends AbstactHookBuilder {
                 Specs.NetworkTtsQueueManager(contentsNetworkTtsQueueRunner)
         );
         if (clsNetworkTtsQueueManager.get() == null) {
-            ModuleMain.module.log("NetworkTtsQueueManager not found");
+            ModuleMain.module.log(Log.ERROR, "GoogleMapsHookBuilder","NetworkTtsQueueManager not found");
         }
-        ModuleMain.module.log("NetworkTtsQueueManager = " + clsNetworkTtsQueueManager.get());
+        ModuleMain.module.log(Log.INFO, "GoogleMapsHookBuilder","NetworkTtsQueueManager = " + clsNetworkTtsQueueManager.get());
 
         final Method methodGetGuidanceText = Arrays.stream(clsNetworkTtsQueueManager.get().getDeclaredMethods())
                 .filter(m -> Modifier.isStatic(m.getModifiers()))
@@ -264,23 +254,23 @@ public class GoogleMapsHookBuilder extends AbstactHookBuilder {
                 .findFirst().orElse(null);
 
         if (methodGetGuidanceText == null) {
-            ModuleMain.module.log("method getGuidanceText not found");
+            ModuleMain.module.log(Log.ERROR, "GoogleMapsHookBuilder","method getGuidanceText not found");
             return;
         }
-        ModuleMain.module.log("getGuidanceText = " + methodGetGuidanceText);
+        ModuleMain.module.log(Log.INFO, "GoogleMapsHookBuilder","getGuidanceText = " + methodGetGuidanceText);
 
-        ModuleMain.module.hook(methodGetGuidanceText, SetVoiceNameHook.class);
+        setVoiceNameHook(methodGetGuidanceText);
 
         storeCache();
     }
 
-    private void runApplicationCapture() {
-        try {
-            ModuleMain.applicationCaptureHookUnhooker = ModuleMain.module.hook(getMethod("android.content.ContextWrapper", "attachBaseContext"), ApplicationCaptureHook.class);
-        } catch (Exception e) {
-            ModuleMain.module.log("runApplicationCapture", e);
-        }
-    }
+//    private void runApplicationCapture() {
+//        try {
+//            ModuleMain.applicationCaptureHookUnhooker = ModuleMain.module.hook(getMethod("android.content.ContextWrapper", "attachBaseContext"), ApplicationCaptureHook.class);
+//        } catch (Exception e) {
+//            ModuleMain.module.log(Log.INFO, "GoogleMapsHookBuilder","runApplicationCapture", e);
+//        }
+//    }
 
     private Method getMethod(String className, String methodName) throws Exception {
         var cls = classLoader().loadClass(className);
@@ -290,29 +280,33 @@ public class GoogleMapsHookBuilder extends AbstactHookBuilder {
         return method;
     }
 
-
-    static class ApplicationCaptureHook implements XposedInterface.Hooker {
-        public static void before(@NonNull XposedInterface.BeforeHookCallback callback) {
-            ModuleMain.module.log("method " + callback.getMember() + " called with " + List.of(callback.getArgs()));
-        }
-
-        public static void after(@NonNull XposedInterface.AfterHookCallback callback) {
-            ModuleMain.module.log("method " + callback.getMember() + " return with " + callback.getResult());
-            try {
-                if (callback.getThisObject() instanceof Application) {
-                    synchronized (ModuleMain.class) {
-                        if (ModuleMain.module.application == null) {
-                            ModuleMain.module.application = (Application) callback.getThisObject();
-                            ModuleMain.applicationCaptureHookUnhooker.unhook();
-                            ModuleMain.module.onApplicationCapture();
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                ModuleMain.module.log("application capture", e);
-            }
-        }
-    }
+//
+//    @XposedHooker
+//    static class ApplicationCaptureHook implements XposedInterface.Hooker {
+//        @BeforeInvocation
+//        public static ApplicationCaptureHook beforeInvocation(XposedInterface.BeforeHookCallback callback) {
+//            ModuleMain.module.log("method " + callback.getMember() + " called with " + List.of(callback.getArgs()));
+//            return new ApplicationCaptureHook();
+//        }
+//
+//        @AfterInvocation
+//        public static void afterInvocation(XposedInterface.AfterHookCallback callback, ApplicationCaptureHook context) {
+//            ModuleMain.module.log("method " + callback.getMember() + " return with " + callback.getResult());
+//            try {
+//                if (callback.getThisObject() instanceof Application) {
+//                    synchronized (ModuleMain.class) {
+//                        if (ModuleMain.module.application == null) {
+//                            ModuleMain.module.application = (Application) callback.getThisObject();
+//                            ModuleMain.applicationCaptureHookUnhooker.unhook();
+//                            ModuleMain.module.onApplicationCapture();
+//                        }
+//                    }
+//                }
+//            } catch (Exception e) {
+//                ModuleMain.module.log("application capture", e);
+//            }
+//        }
+//    }
 
     private static void dumpTextStructure(Object obj) {
         try {
@@ -324,77 +318,153 @@ public class GoogleMapsHookBuilder extends AbstactHookBuilder {
             }
             os.close();
             var array = os.toByteArray();
-            ModuleMain.module.log("\n" + Util.hexdump(array));
-            ModuleMain.module.log("\n" + Util.dumpProto(array));
+            ModuleMain.module.log(Log.INFO, "GoogleMapsHookBuilder","\n" + Util.hexdump(array));
+            ModuleMain.module.log(Log.INFO, "GoogleMapsHookBuilder","\n" + Util.dumpProto(array));
         } catch (Exception ignore) {
         }
     }
 
-    static class SynthesizeHook implements XposedInterface.Hooker {
-        public static void before(@NonNull XposedInterface.BeforeHookCallback callback) {
-            ModuleMain.module.log("method " + callback.getMember() + " called with " + List.of(callback.getArgs()));
-            dumpTextStructure(callback.getArgs()[0]);
-            ModuleMain.Preferences p = ModuleMain.getPreferences();
-            if (p.hookNetworkSynthesizer()) {
-                if (p.disableNetworkSynthesizer()) {
-                    callback.returnAndSkip(false);
-                } else {
-                    var api = p.getVoiceVoxEngine();
-                    var p1 = callback.getArgs()[0];
-                    var path = (String) callback.getArgs()[2];
-                    boolean ret = false;
-                    try {
-                        Field f = p1.getClass().getField("a");
-                        var text = (String) f.get(p1);
-                        text = text.replaceAll(" ", "");
-                        text = text.replaceAll("、、", "、");
-                        String json = api.audio_query(p.voiceboxStyleId, text);
-                        byte[] audio = api.synthesis(p.voiceboxStyleId, json);
-                        try (var os = new FileOutputStream(path)) {
-                            os.write(audio);
-                        }
-                        ret = true;
-                    } catch (IOException ioe) {
-                        ModuleMain.module.log("remote TTS failed", ioe);
-                    } catch (Exception e) {
-                        ModuleMain.module.log("hook parameter error", e);
-                    }
-                    callback.returnAndSkip(ret);
-                }
-            }
-        }
 
-        public static void after(XposedInterface.AfterHookCallback callback) {
-            ModuleMain.module.log("method " + callback.getMember() + " return with " + callback.getResult());
-        }
+    public XposedInterface.HookHandle synthesizeHook(@NonNull Executable origin)
+    {
+        return ModuleMain.module.hook(origin)
+                .intercept(chain -> {
+                    ModuleMain.module.log(Log.INFO, "Synthesize", "method " + chain.getExecutable().getName() + " called with " + List.of(chain.getArgs()));
+                    dumpTextStructure(chain.getArgs().get(0));
+                    ModuleMain.Preferences p = ModuleMain.getPreferences();
+                    if (p.hookNetworkSynthesizer()) {
+                        if (p.disableNetworkSynthesizer()) {
+                            ModuleMain.module.log(Log.INFO, "Synthesize", "method " + chain.getExecutable().getName() + " return with " + false);
+                            return false;
+                        } else {
+                            var api = p.getVoiceVoxEngine();
+                            var p1 = chain.getArgs().get(0);
+                            var path = (String) chain.getArgs().get(2);
+                            try {
+                                Field f = p1.getClass().getField("a");
+                                var text = (String) f.get(p1);
+                                text = text.replaceAll(" ", "");
+                                text = text.replaceAll("、、", "、");
+                                String json = api.audio_query(p.voiceboxStyleId, text);
+                                byte[] audio = api.synthesis(p.voiceboxStyleId, json);
+                                try (var os = new FileOutputStream(path)) {
+                                    os.write(audio);
+                                }
+                            } catch (IOException ioe) {
+                                ModuleMain.module.log(Log.ERROR, "Synthesize","remote TTS failed", ioe);
+                                return chain.proceed();
+                            } catch (Exception e) {
+                                ModuleMain.module.log(Log.ERROR, "Synthesize","hook parameter error", e);
+                                return chain.proceed();
+                            }
+                            ModuleMain.module.log(Log.INFO, "Synthesize", "method " + chain.getExecutable().getName() + " return with " + true);
+                            return true;
+                        }
+                    } else {
+                        return chain.proceed();
+                    }
+                });
     }
+
+//    @XposedHooker
+//    static class SynthesizeHook implements XposedInterface.Hooker {
+//        @BeforeInvocation
+//        public static SynthesizeHook beforeInvocation(XposedInterface.BeforeHookCallback callback) {
+//            ModuleMain.module.log("method " + callback.getMember() + " called with " + List.of(callback.getArgs()));
+//            dumpTextStructure(callback.getArgs()[0]);
+//            ModuleMain.Preferences p = ModuleMain.getPreferences();
+//            if (p.hookNetworkSynthesizer()) {
+//                if (p.disableNetworkSynthesizer()) {
+//                    callback.returnAndSkip(false);
+//                } else {
+//                    var api = p.getVoiceVoxEngine();
+//                    var p1 = callback.getArgs()[0];
+//                    var path = (String) callback.getArgs()[2];
+//                    boolean ret = false;
+//                    try {
+//                        Field f = p1.getClass().getField("a");
+//                        var text = (String) f.get(p1);
+//                        text = text.replaceAll(" ", "");
+//                        text = text.replaceAll("、、", "、");
+//                        String json = api.audio_query(p.voiceboxStyleId, text);
+//                        byte[] audio = api.synthesis(p.voiceboxStyleId, json);
+//                        try (var os = new FileOutputStream(path)) {
+//                            os.write(audio);
+//                        }
+//                        ret = true;
+//                    } catch (IOException ioe) {
+//                        ModuleMain.module.log("remote TTS failed", ioe);
+//                    } catch (Exception e) {
+//                        ModuleMain.module.log("hook parameter error", e);
+//                    }
+//                    callback.returnAndSkip(ret);
+//                }
+//            }
+//            return new SynthesizeHook();
+//        }
+//
+//        @AfterInvocation
+//        public static void afterInvocation(XposedInterface.AfterHookCallback callback, SynthesizeHook context) {
+//            ModuleMain.module.log("method " + callback.getMember() + " return with " + callback.getResult());
+//        }
+//    }
 
     //
     // 音声合成キャッシュのIDの生成にボイス名をいれるようにする
     //
-    static class SetVoiceNameHook implements XposedInterface.Hooker {
-        public static void before(@NonNull XposedInterface.BeforeHookCallback callback) {
-            ModuleMain.module.log("method " + callback.getMember() + " called with " + List.of(callback.getArgs()));
-        }
 
-        public static void after(@NonNull XposedInterface.AfterHookCallback callback) {
-            ModuleMain.Preferences p = ModuleMain.getPreferences();
-            if (p.hookNetworkSynthesizer()) {
-                // ネットワークTTSを使わないときは、キャッシュにヒットしないようなボイス名にしてなんとかする
-                var voiceName = p.disableNetworkSynthesizer() ? "DISABLE-TTS" : "VOICEVOX-" + p.voiceboxStyleId;
-                var ret = callback.getResult();
-                Arrays.stream(ret.getClass().getDeclaredFields())
-                        .filter(f -> f.getType().equals(String.class))
-                        .forEach(f -> {
-                            try {
-                                f.setAccessible(true);
-                                f.set(ret, voiceName);
-                            } catch (IllegalAccessException e) {
-                                ModuleMain.module.log("setting ret.voice failed", e);
-                            }
-                        });
-            }
-            ModuleMain.module.log("method " + callback.getMember() + " return with " + callback.getResult());
-        }
+    public XposedInterface.HookHandle setVoiceNameHook(@NonNull Executable origin) {
+        return ModuleMain.module.hook(origin)
+                .intercept(chain -> {
+                    ModuleMain.module.log(Log.INFO, "SetVoiceName", "method " + chain.getExecutable().getName() + " called with " + List.of(chain.getArgs()));
+                    Object ret = chain.proceed();
+                    ModuleMain.Preferences p = ModuleMain.getPreferences();
+                    if (p.hookNetworkSynthesizer()) {
+                        // ネットワークTTSを使わないときは、キャッシュにヒットしないようなボイス名にしてなんとかする
+                        var voiceName = p.disableNetworkSynthesizer() ? "DISABLE-TTS" : "VOICEVOX-" + p.voiceboxStyleId;
+                        Arrays.stream(ret.getClass().getDeclaredFields())
+                                .filter(f -> f.getType().equals(String.class))
+                                .forEach(f -> {
+                                    try {
+                                        f.setAccessible(true);
+                                        f.set(ret, voiceName);
+                                    } catch (IllegalAccessException e) {
+                                        ModuleMain.module.log(Log.ERROR, "SetVoiceName","setting ret.voice failed", e);
+                                    }
+                                });
+                    }
+                    ModuleMain.module.log(Log.INFO, "SetVoiceName", "method " + chain.getExecutable().getName() + " return with " + ret);
+                    return ret;
+                });
     }
+
+//    @XposedHooker
+//    static class SetVoiceNameHook implements XposedInterface.Hooker {
+//        @BeforeInvocation
+//        public static SetVoiceNameHook beforeInvocation(XposedInterface.BeforeHookCallback callback) {
+//            ModuleMain.module.log("method " + callback.getMember() + " called with " + List.of(callback.getArgs()));
+//            return new SetVoiceNameHook();
+//        }
+//
+//        @AfterInvocation
+//        public static void afterInvocation(XposedInterface.AfterHookCallback callback, SetVoiceNameHook context) {
+//            ModuleMain.Preferences p = ModuleMain.getPreferences();
+//            if (p.hookNetworkSynthesizer()) {
+//                // ネットワークTTSを使わないときは、キャッシュにヒットしないようなボイス名にしてなんとかする
+//                var voiceName = p.disableNetworkSynthesizer() ? "DISABLE-TTS" : "VOICEVOX-" + p.voiceboxStyleId;
+//                var ret = callback.getResult();
+//                Arrays.stream(ret.getClass().getDeclaredFields())
+//                        .filter(f -> f.getType().equals(String.class))
+//                        .forEach(f -> {
+//                            try {
+//                                f.setAccessible(true);
+//                                f.set(ret, voiceName);
+//                            } catch (IllegalAccessException e) {
+//                                ModuleMain.module.log("setting ret.voice failed", e);
+//                            }
+//                        });
+//            }
+//            ModuleMain.module.log("method " + callback.getMember() + " return with " + callback.getResult());
+//        }
+//    }
 }

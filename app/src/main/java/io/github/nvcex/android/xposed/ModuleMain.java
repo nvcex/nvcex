@@ -2,6 +2,7 @@ package io.github.nvcex.android.xposed;
 
 import android.app.Application;
 import android.content.SharedPreferences;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 
@@ -14,6 +15,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Method;
 
+import io.github.libxposed.api.XposedModuleInterface;
 import io.github.nvcex.android.VoiceVoxEngineApi;
 import io.github.libxposed.api.XposedInterface;
 import io.github.libxposed.api.XposedModule;
@@ -70,13 +72,21 @@ public class ModuleMain extends XposedModule {
     @NonNull
     private static Preferences preferences = new Preferences();
 
-    static MethodUnhooker<Method> applicationCaptureHookUnhooker;
+    //static MethodUnhooker<Method> applicationCaptureHookUnhooker;
 
-    public static Application application;
+    //public static Application application;
 
-    public ModuleMain(@NonNull XposedInterface base, @NonNull ModuleLoadedParam param) {
-        super(base, param);
-        log("ModuleMain at " + param.getProcessName());
+//    public ModuleMain(XposedInterface p1, XposedModuleInterface.ModuleLoadedParam param) {
+//    }
+//
+//    public ModuleMain()
+//    {
+//    }
+
+    @Override
+    public void onModuleLoaded(@NonNull ModuleLoadedParam param) {
+        super.onModuleLoaded(param);
+        log(Log.INFO, "ModuleMain", "onModuleLoaded: " + param.getProcessName());
         module = this;
         var prefs = getRemotePreferences("io.github.nvcex.android_preferences");
         loadSharedPreferences(prefs);
@@ -98,42 +108,42 @@ public class ModuleMain extends XposedModule {
     @Override
     public void onPackageLoaded(@NonNull PackageLoadedParam param) {
         super.onPackageLoaded(param);
-        log("onPackageLoaded: " + param.getPackageName());
-        log("param classloader is " + param.getClassLoader());
-        log("module apk path: " + this.getApplicationInfo().sourceDir);
-        log("----------");
+        log(Log.INFO, "ModuleMain","onPackageLoaded: " + param.getPackageName());
+        log(Log.INFO, "ModuleMain","param classloader is " + param.getDefaultClassLoader());
+        log(Log.INFO, "ModuleMain","module apk path: " + param.getApplicationInfo().sourceDir);
+        log(Log.INFO, "ModuleMain","----------");
 
         if (!param.isFirstPackage()) return;
 
         new GoogleMapsHookBuilder(param).run();
     }
 
-    private File getCannedMessageBundle() {
-        File base = application.getExternalFilesDir(null);
-        if (base.getName().equals("files")) {
-            base = base.getParentFile();
-        }
-        log("base: " + base);
-        // testdata/voice/ja_JP6adc1df/voice_instructions_unitless.zip
-        File voice = new File(base, "testdata/voice");
-        if (!voice.isDirectory()) {
-            log("voice directory not found: " + voice);
-            return null;
-        }
-        File[] files = voice.listFiles(pathname -> pathname.getName().startsWith("ja_JP"));
-        if (files == null) {
-            log("failed to list voice directory: " + voice);
-            return null;
-        }
-        for (var dir : files) {
-            File bundle = new File(dir, "voice_instructions_unitless.zip");
-            if (bundle.exists()) {
-                return bundle;
-            }
-        }
-        log("failed to find list canned message bundle: " + voice);
-        return null;
-    }
+//    private File getCannedMessageBundle() {
+//        File base = application.getExternalFilesDir(null);
+//        if (base.getName().equals("files")) {
+//            base = base.getParentFile();
+//        }
+//        log(Log.INFO, "ModuleMain","base: " + base);
+//        // testdata/voice/ja_JP6adc1df/voice_instructions_unitless.zip
+//        File voice = new File(base, "testdata/voice");
+//        if (!voice.isDirectory()) {
+//            log(Log.INFO, "ModuleMain","voice directory not found: " + voice);
+//            return null;
+//        }
+//        File[] files = voice.listFiles(pathname -> pathname.getName().startsWith("ja_JP"));
+//        if (files == null) {
+//            log(Log.INFO, "ModuleMain","failed to list voice directory: " + voice);
+//            return null;
+//        }
+//        for (var dir : files) {
+//            File bundle = new File(dir, "voice_instructions_unitless.zip");
+//            if (bundle.exists()) {
+//                return bundle;
+//            }
+//        }
+//        log(Log.INFO, "ModuleMain","failed to find list canned message bundle: " + voice);
+//        return null;
+//    }
 
     private boolean isIdenticalFile(FileDescriptor f, File g) throws IOException {
         try (var isf = new FileInputStream(f)) {
@@ -160,7 +170,7 @@ public class ModuleMain extends XposedModule {
         if (files != null) {
             for (var file : files) {
                 if (!file.delete()) {
-                    log("failed to delete file: " + file);
+                    log(Log.INFO, "ModuleMain","failed to delete file: " + file);
                 }
             }
         }
@@ -190,25 +200,25 @@ public class ModuleMain extends XposedModule {
             }
         } catch (FileNotFoundException ignore) {
         } catch (IOException ioe) {
-            log("needCannedMessageBundleUpdate", ioe);
+            log(Log.INFO, "ModuleMain","needCannedMessageBundleUpdate", ioe);
         }
         return false;
     }
 
-    void onApplicationCapture() {
-        File installed = getCannedMessageBundle();
-        if (needToUpdateCannedMessageBundle(installed)) {
-            try (var installing = openRemoteFile("voice_instructions_unitless.zip")) {
-                log("installing new canned message bundle into: " + installed);
-                // testdata/voice/ja_JP6adc1df/._GPS_LOST.mp3 みたいに残ってるファイルを消す
-                cleanDirectory(installed.getParentFile());
-                copyFile(installing.getFileDescriptor(), installed);
-            } catch (FileNotFoundException ignore) {
-            } catch (IOException ioe) {
-                log("install canned message bundle failed", ioe);
-            }
-        }
-    }
+//    void onApplicationCapture() {
+//        File installed = getCannedMessageBundle();
+//        if (needToUpdateCannedMessageBundle(installed)) {
+//            try (var installing = openRemoteFile("voice_instructions_unitless.zip")) {
+//                log(Log.INFO, "ModuleMain","installing new canned message bundle into: " + installed);
+//                // testdata/voice/ja_JP6adc1df/._GPS_LOST.mp3 みたいに残ってるファイルを消す
+//                cleanDirectory(installed.getParentFile());
+//                copyFile(installing.getFileDescriptor(), installed);
+//            } catch (FileNotFoundException ignore) {
+//            } catch (IOException ioe) {
+//                log(Log.INFO, "ModuleMain","install canned message bundle failed", ioe);
+//            }
+//        }
+//    }
 
 
 }

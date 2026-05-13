@@ -2,6 +2,7 @@ package io.github.nvcex.android.xposed;
 
 import android.annotation.SuppressLint;
 import android.os.Environment;
+import android.util.Log;
 import android.util.Pair;
 
 import androidx.annotation.NonNull;
@@ -29,7 +30,7 @@ import java.util.stream.Stream;
 import io.github.libxposed.api.XposedInterface;
 import io.github.libxposed.api.XposedModuleInterface;
 
-public abstract class AbstactHookBuilder {
+public abstract class AbstractHookBuilder {
     protected final XposedModuleInterface.PackageLoadedParam moduleLoadedParam;
     protected final int versionCode;
     protected final String versionName;
@@ -37,7 +38,7 @@ public abstract class AbstactHookBuilder {
 
     private List<Class<?>> lazyAllClasses;
 
-    protected AbstactHookBuilder(@NonNull XposedModuleInterface.PackageLoadedParam param) {
+    protected AbstractHookBuilder(@NonNull XposedModuleInterface.PackageLoadedParam param) {
         this.moduleLoadedParam = param;
         var version = getPackageVersion(param);
         if (version == null) {
@@ -52,7 +53,7 @@ public abstract class AbstactHookBuilder {
 
     private static Pair<String, Integer> getPackageVersion(@NonNull XposedModuleInterface.PackageLoadedParam param) {
         try {
-            @SuppressLint("PrivateApi") Class<?> parserCls = param.getClassLoader().loadClass("android.content.pm.PackageParser");
+            @SuppressLint("PrivateApi") Class<?> parserCls = param.getDefaultClassLoader().loadClass("android.content.pm.PackageParser");
             var parser = parserCls.newInstance();
             File apkPath = new File(param.getApplicationInfo().sourceDir);
             var method = parserCls.getMethod("parsePackage", File.class, int.class);
@@ -63,22 +64,23 @@ public abstract class AbstactHookBuilder {
             int versionCode = field2.getInt(pkg);
             return new Pair<>(versionName, versionCode);
         } catch (Throwable e) {
-            ModuleMain.module.log("failed to get package version", e);
+            ModuleMain.module.log(Log.ERROR, "AbstractHookBuilder", "getPackageVersion: failed to get package version", e);
             return null;
         }
     }
 
+    // TODO: shared preferenceに移動したほうがいいかも
     protected void loadCache() {
         // Applicationをまだロードしてないので、キャッシュの場所がわからん
         var path = new File(Environment.getExternalStorageDirectory(),
                 "Android/data/" + moduleLoadedParam.getPackageName() + "/cache/.nvcex/" + versionName);
-        ModuleMain.module.log("loading analysis cache: " + path);
+        ModuleMain.module.log(Log.INFO, "AbstractHookBuilder", "loading analysis cache: " + path);
         try (var is = new FileInputStream(path)) {
             this.cacheStore.load(new InputStreamReader(is, StandardCharsets.UTF_8));
-            ModuleMain.module.log("loaded");
+            ModuleMain.module.log(Log.INFO, "AbstractHookBuilder", "loaded");
         } catch (FileNotFoundException ignore) {
         } catch (IOException ioe) {
-            ModuleMain.module.log("load cache failed", ioe);
+            ModuleMain.module.log(Log.ERROR, "AbstractHookBuilder", "load cache failed", ioe);
         }
     }
 
@@ -86,19 +88,19 @@ public abstract class AbstactHookBuilder {
         // Applicationをまだロードしてないので、キャッシュの場所がわからん
         var path = new File(Environment.getExternalStorageDirectory(),
                 "Android/data/" + moduleLoadedParam.getPackageName() + "/cache/.nvcex/" + versionName);
-        ModuleMain.module.log("store analysis cache: " + path);
+        ModuleMain.module.log(Log.INFO, "AbstractHookBuilder", "store analysis cache: " + path);
         path.getParentFile().mkdirs();
         try (var os = new FileOutputStream(path)) {
             this.cacheStore.store(new OutputStreamWriter(os, StandardCharsets.UTF_8), "");
-            ModuleMain.module.log("stored");
+            ModuleMain.module.log(Log.INFO, "AbstractHookBuilder", "stored");
         } catch (FileNotFoundException ignore) {
         } catch (IOException ioe) {
-            ModuleMain.module.log("load cache failed", ioe);
+            ModuleMain.module.log(Log.ERROR, "AbstractHookBuilder","load cache failed", ioe);
         }
     }
 
     protected ClassLoader classLoader() {
-        return moduleLoadedParam.getClassLoader();
+        return moduleLoadedParam.getDefaultClassLoader();
     }
 
     interface Cached<T> {
@@ -165,7 +167,7 @@ public abstract class AbstactHookBuilder {
                     return update();
                 } else {
                     try {
-                        var clazz = moduleLoadedParam.getClassLoader().loadClass(className);
+                        var clazz = classLoader().loadClass(className);
                         if (p.test(clazz)) {
                             return clazz;
                         } else {
@@ -199,7 +201,7 @@ public abstract class AbstactHookBuilder {
                     List<Class<?>> ret = new ArrayList<>();
                     try {
                         for (var className : classNames) {
-                            var clazz = moduleLoadedParam.getClassLoader().loadClass(className);
+                            var clazz = classLoader().loadClass(className);
                             if (p.test(clazz)) {
                                 ret.add(clazz);
                             } else {
@@ -284,30 +286,21 @@ public abstract class AbstactHookBuilder {
         };
     }
 
-    static class InspectHook implements XposedInterface.Hooker
+    public XposedInterface.HookHandle inspectHook(@NonNull Executable origin, boolean trace)
     {
-        public static void before(@NonNull XposedInterface.BeforeHookCallback callback) {
-            ModuleMain.module.log("method " + callback.getMember() + " called with " + List.of(callback.getArgs()));
-        }
-
-        public static void after(@NonNull XposedInterface.AfterHookCallback callback) {
-            ModuleMain.module.log("method " + callback.getMember() + " return with " + callback.getResult());
-        }
-    }
-
-    static class InspectCallStackHook implements XposedInterface.Hooker
-    {
-        public static void before(@NonNull XposedInterface.BeforeHookCallback callback) {
-            ModuleMain.module.log("method " + callback.getMember() + " called with " + List.of(callback.getArgs()));
-            try {
-                throw new Exception();
-            } catch (Exception e) {
-                ModuleMain.module.log("stacktrace", e);
-            }
-        }
-
-        public static void after(@NonNull XposedInterface.AfterHookCallback callback) {
-            ModuleMain.module.log("method " + callback.getMember() + " return with " + callback.getResult());
-        }
+        return ModuleMain.module.hook(origin)
+                .intercept(chain -> {
+                    ModuleMain.module.log(Log.INFO, "Inspect", "method " + chain.getExecutable().getName() + " called with " + List.of(chain.getArgs()));
+                    if (trace) {
+                        try {
+                            throw new Exception();
+                        } catch (Exception e) {
+                            ModuleMain.module.log(Log.INFO, "Inspect", "stacktrace", e);
+                        }
+                    }
+                    Object ret = chain.proceed();
+                    ModuleMain.module.log(Log.INFO, "Inspect", "method " + chain.getExecutable().getName() + " return with " + ret);
+                    return ret;
+                });
     }
 }

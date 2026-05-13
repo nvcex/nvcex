@@ -4,7 +4,7 @@ import java.io.FileInputStream
 
 plugins {
     id("com.android.application")
-    id("com.google.protobuf") version "0.9.4"
+    id("com.google.protobuf") version "0.10.0"
 }
 
 val commitCount by project.extra {
@@ -36,7 +36,7 @@ try {
 
 android {
     namespace = "io.github.nvcex.android"
-    compileSdk = 34
+    compileSdk = 36
 
     if (!keystoreProperties.isEmpty) {
         signingConfigs {
@@ -113,8 +113,8 @@ dependencies {
     implementation("com.fasterxml.jackson.core:jackson-databind:2.15.3")
     implementation("com.fasterxml.jackson.core:jackson-annotations:2.15.3")
 
-    compileOnly("io.github.libxposed:api:100")
-    implementation("io.github.libxposed:service:100-1.0.0")
+    compileOnly("io.github.libxposed:api:101.0.1")
+    implementation("io.github.libxposed:service:101.0.0")
 }
 
 fun execCommand(command: String): String? {
