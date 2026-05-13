@@ -62,7 +62,7 @@ public class GoogleMapsHookBuilder extends AbstactHookBuilder {
             //      public NetworkTtsQueueRunner(
             //          Unknown0 p0,
             //          Unknown1 p1,
-            //          Unknown2 p2,
+            //          ApplicationParameters p2,
             //          Unknown3 p3,
             //          Executor p4,
             //          boolean p5,
@@ -99,35 +99,39 @@ public class GoogleMapsHookBuilder extends AbstactHookBuilder {
             // public final class NetworkTtsQueueManager implements ???
             // {
             //      public NetworkTtsQueueManager(
-            //          Unknown2 p0,
-            //          ApplicationParameters p1,
-            //          TtsStat p2,
-            //          PriorityBlockingQueue p3,
-            //          NetworkTtsQueueRunner p4,
-            //          NazoTriple p5
+            //          Unknown0 p0,
+            //          Executor p1,
+            //          Executor p2,
+            //          Unknown3 p3,
+            //          Unknown4 p4,
+            //          Unknown5 p5,
+            //          ApplicationParameters p6,
+            //          TtsStat p7,
+            //          Unknown8 p8,
+            //          TtsSynthesizer p9,
+            //          TtsSynthesizer p10,
+            //          TtsSynthesizer p11,
+            //          Unknown12 p12
             //      ) {
             //      }
             // }
             return cls -> Stream.of(cls)
                     .flatMap(GoogleMapsHookBuilder::getUniqueConstructor)
-                    .filter(matchParam(0, c.Unknown2))
-                    .filter(matchParam(1, c.ApplicationParameters))
-                    .filter(matchParam(2, c.TtsStat))
-                    .filter(matchParam(3, PriorityBlockingQueue.class))
-                    .filter(matchParam(4, c.clazz))
-                    .anyMatch(matchParam(5, c.NazoTriple));
+                    .filter(matchParam(1, Executor.class))
+                    .filter(matchParam(2, Executor.class))
+                    .filter(matchParam(6, c.ApplicationParameters))
+                    .filter(matchParam(7, c.TtsStat))
+                    .filter(matchParam(9, c.TtsSynthesizer))
+                    .filter(matchParam(10, c.TtsSynthesizer))
+                    .filter(matchParam(11, c.TtsSynthesizer))
+                    .anyMatch(x -> true);
         }
 
         static class NetworkTtsQueueRunnerContents {
             public final Class<?> clazz;
-            public final Class<?> Unknown1;
-            public final Class<?> TtsTempManager;
             public final Class<?> ApplicationParameters;
-            public final Class<?> Unknown2;
             public final Class<?> TtsStat;
             public final Class<?> TtsSynthesizer;
-            public final Class<?> Unknown3;
-            public final Class<?> NazoTriple;
             public final Constructor<?> constructor;
 
             public NetworkTtsQueueRunnerContents(Class<?> cls) {
@@ -135,20 +139,16 @@ public class GoogleMapsHookBuilder extends AbstactHookBuilder {
                 ModuleMain.module.log("class NetworkTtsQueueRunner = " + cls.getName());
                 this.constructor = cls.getDeclaredConstructors()[0];
                 ModuleMain.module.log("NetworkTtsQueueRunner.<init> = " + this.constructor);
-                this.Unknown1 = this.constructor.getParameterTypes()[1];
-                this.TtsTempManager = this.constructor.getParameterTypes()[2];
-                this.ApplicationParameters = this.constructor.getParameterTypes()[3];
-                this.Unknown2 = this.constructor.getParameterTypes()[4];
+                this.ApplicationParameters = this.constructor.getParameterTypes()[2];
                 this.TtsStat = this.constructor.getParameterTypes()[7];
                 this.TtsSynthesizer = this.constructor.getParameterTypes()[8];
-                this.Unknown3 = this.constructor.getParameterTypes()[10];
-                this.NazoTriple = this.constructor.getParameterTypes()[11];
                 ModuleMain.module.log("interface TtsSynthesizer = " + this.TtsSynthesizer);
             }
         }
 
         static class TtsSynthesizerContents {
             public final Method synthesizeToFile;
+            public final Class<?> StructuredText;
 
             public TtsSynthesizerContents(Class<?> cls) {
                 // boolean TtsSynthesizer#synthesizeToFile(VoiceAlert alert, Coordinate p1, String path)
@@ -158,9 +158,11 @@ public class GoogleMapsHookBuilder extends AbstactHookBuilder {
                         .findFirst().orElse(null);
                 if (this.synthesizeToFile == null) {
                     ModuleMain.module.log("method synthesizeToFile not found");
+                    this.StructuredText = null;
                     return;
                 }
                 ModuleMain.module.log("method synthesizeToFile = " + this.synthesizeToFile);
+                this.StructuredText = this.synthesizeToFile.getParameterTypes()[0];
             }
         }
     }
@@ -198,18 +200,18 @@ public class GoogleMapsHookBuilder extends AbstactHookBuilder {
 //            ModuleMain.module.hook(m, InspectCallStackHook.class);
 //        }
 
-        var clsTTS1 = classLoader().loadClass("bpkf");
-        for (var m : clsTTS1.getDeclaredMethods()) {
-            ModuleMain.module.hook(m, InspectCallStackHook.class);
-        }
-        var clsTTS2 = classLoader().loadClass("bpkg");
-        for (var m : clsTTS2.getDeclaredMethods()) {
-            ModuleMain.module.hook(m, InspectCallStackHook.class);
-        }
-        var clsTTS3 = classLoader().loadClass("bpkl");
-        for (var m : clsTTS3.getDeclaredMethods()) {
-            ModuleMain.module.hook(m, InspectCallStackHook.class);
-        }
+//        var clsTTS1 = classLoader().loadClass("bpkf");
+//        for (var m : clsTTS1.getDeclaredMethods()) {
+//            ModuleMain.module.hook(m, InspectCallStackHook.class);
+//        }
+//        var clsTTS2 = classLoader().loadClass("bpkg");
+//        for (var m : clsTTS2.getDeclaredMethods()) {
+//            ModuleMain.module.hook(m, InspectCallStackHook.class);
+//        }
+//        var clsTTS3 = classLoader().loadClass("bpkl");
+//        for (var m : clsTTS3.getDeclaredMethods()) {
+//            ModuleMain.module.hook(m, InspectCallStackHook.class);
+//        }
 
     }
 
@@ -261,7 +263,7 @@ public class GoogleMapsHookBuilder extends AbstactHookBuilder {
                 .filter(m -> Modifier.isStatic(m.getModifiers()))
                 .filter(m -> m.getParameterCount() == 3)
                 .filter(matchParam(0, contentsNetworkTtsQueueRunner.ApplicationParameters))
-                .filter(matchParam(2, contentsNetworkTtsQueueRunner.NazoTriple))
+                .filter(matchParam(1, contentsTtsSynthesizer.StructuredText))
                 .findFirst().orElse(null);
 
         if (methodGetGuidanceText == null) {
