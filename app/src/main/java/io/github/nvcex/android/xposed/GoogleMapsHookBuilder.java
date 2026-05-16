@@ -21,9 +21,6 @@ import java.util.stream.Stream;
 
 import io.github.libxposed.api.XposedInterface;
 import io.github.libxposed.api.XposedModuleInterface;
-import io.github.libxposed.api.annotations.AfterInvocation;
-import io.github.libxposed.api.annotations.BeforeInvocation;
-import io.github.libxposed.api.annotations.XposedHooker;
 
 public class GoogleMapsHookBuilder extends AbstactHookBuilder {
     public static final int NR_CLASSES = 100000;
@@ -294,16 +291,12 @@ public class GoogleMapsHookBuilder extends AbstactHookBuilder {
     }
 
 
-    @XposedHooker
     static class ApplicationCaptureHook implements XposedInterface.Hooker {
-        @BeforeInvocation
-        public static ApplicationCaptureHook beforeInvocation(XposedInterface.BeforeHookCallback callback) {
+        public static void before(@NonNull XposedInterface.BeforeHookCallback callback) {
             ModuleMain.module.log("method " + callback.getMember() + " called with " + List.of(callback.getArgs()));
-            return new ApplicationCaptureHook();
         }
 
-        @AfterInvocation
-        public static void afterInvocation(XposedInterface.AfterHookCallback callback, ApplicationCaptureHook context) {
+        public static void after(@NonNull XposedInterface.AfterHookCallback callback) {
             ModuleMain.module.log("method " + callback.getMember() + " return with " + callback.getResult());
             try {
                 if (callback.getThisObject() instanceof Application) {
@@ -337,10 +330,8 @@ public class GoogleMapsHookBuilder extends AbstactHookBuilder {
         }
     }
 
-    @XposedHooker
     static class SynthesizeHook implements XposedInterface.Hooker {
-        @BeforeInvocation
-        public static SynthesizeHook beforeInvocation(XposedInterface.BeforeHookCallback callback) {
+        public static void before(@NonNull XposedInterface.BeforeHookCallback callback) {
             ModuleMain.module.log("method " + callback.getMember() + " called with " + List.of(callback.getArgs()));
             dumpTextStructure(callback.getArgs()[0]);
             ModuleMain.Preferences p = ModuleMain.getPreferences();
@@ -371,11 +362,9 @@ public class GoogleMapsHookBuilder extends AbstactHookBuilder {
                     callback.returnAndSkip(ret);
                 }
             }
-            return new SynthesizeHook();
         }
 
-        @AfterInvocation
-        public static void afterInvocation(XposedInterface.AfterHookCallback callback, SynthesizeHook context) {
+        public static void after(XposedInterface.AfterHookCallback callback) {
             ModuleMain.module.log("method " + callback.getMember() + " return with " + callback.getResult());
         }
     }
@@ -383,16 +372,12 @@ public class GoogleMapsHookBuilder extends AbstactHookBuilder {
     //
     // 音声合成キャッシュのIDの生成にボイス名をいれるようにする
     //
-    @XposedHooker
     static class SetVoiceNameHook implements XposedInterface.Hooker {
-        @BeforeInvocation
-        public static SetVoiceNameHook beforeInvocation(XposedInterface.BeforeHookCallback callback) {
+        public static void before(@NonNull XposedInterface.BeforeHookCallback callback) {
             ModuleMain.module.log("method " + callback.getMember() + " called with " + List.of(callback.getArgs()));
-            return new SetVoiceNameHook();
         }
 
-        @AfterInvocation
-        public static void afterInvocation(XposedInterface.AfterHookCallback callback, SetVoiceNameHook context) {
+        public static void after(@NonNull XposedInterface.AfterHookCallback callback) {
             ModuleMain.Preferences p = ModuleMain.getPreferences();
             if (p.hookNetworkSynthesizer()) {
                 // ネットワークTTSを使わないときは、キャッシュにヒットしないようなボイス名にしてなんとかする
