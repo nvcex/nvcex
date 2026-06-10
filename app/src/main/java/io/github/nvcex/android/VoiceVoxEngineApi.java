@@ -87,6 +87,17 @@ public class VoiceVoxEngineApi {
         }
     }
 
+    public void log_text(String s, byte[] b) throws IOException
+    {
+        var mapper = new ObjectMapper();
+        byte[] json = mapper.writeValueAsBytes(new StructuredText(s, b));
+        var req = requestBuilder("log_text", null)
+                .post(RequestBody.create(json, MediaType.parse("application/json")))
+                .build();
+        try (var res = client.newCall(req).execute()) {
+        }
+    }
+
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Player {
         public final String name;
@@ -114,6 +125,20 @@ public class VoiceVoxEngineApi {
         {
             this.name = name;
             this.id = id;
+        }
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class StructuredText
+    {
+        public final String text;
+        public final byte[] body;
+
+        @JsonCreator
+        public StructuredText(String text, byte[] body)
+        {
+            this.text = text;
+            this.body = body;
         }
     }
 }

@@ -14,6 +14,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Method;
 
+import io.github.nvcex.android.NvcexServerApi;
 import io.github.nvcex.android.VoiceVoxEngineApi;
 import io.github.libxposed.api.XposedInterface;
 import io.github.libxposed.api.XposedModule;
@@ -32,6 +33,9 @@ public class ModuleMain extends XposedModule {
         public final String voiceboxPassword;
         public final int voiceboxStyleId;
 
+        @NonNull
+        public final String scenario;
+
         public Preferences()
         {
             googleMapNetworkTtsConfig = "default";
@@ -39,6 +43,7 @@ public class ModuleMain extends XposedModule {
             voicevoxUsername = "";
             voiceboxPassword = "";
             voiceboxStyleId = 0;
+            scenario = "";
         }
 
         public Preferences(@NonNull SharedPreferences prefs, @NonNull Preferences old)
@@ -48,6 +53,7 @@ public class ModuleMain extends XposedModule {
             voicevoxUsername = prefs.getString("voicevox_engine_username", old.voicevoxUsername);
             voiceboxPassword = prefs.getString("voicevox_engine_password", old.voiceboxPassword);
             voiceboxStyleId = Integer.parseInt(prefs.getString("style", Integer.toString(old.voiceboxStyleId)));
+            scenario = prefs.getString("scenario", old.scenario);
         }
 
         public boolean hookNetworkSynthesizer()
@@ -64,6 +70,12 @@ public class ModuleMain extends XposedModule {
         public VoiceVoxEngineApi getVoiceVoxEngine()
         {
             return new VoiceVoxEngineApi(voicevoxEngineUrl, voicevoxUsername, voiceboxPassword);
+        }
+
+        @NonNull
+        public NvcexServerApi getNvcexServer()
+        {
+            return new NvcexServerApi(voicevoxEngineUrl, voicevoxUsername, voiceboxPassword);
         }
     }
 

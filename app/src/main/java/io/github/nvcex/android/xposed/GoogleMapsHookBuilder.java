@@ -5,6 +5,7 @@ import android.app.Application;
 import androidx.annotation.NonNull;
 
 import java.io.ByteArrayOutputStream;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
@@ -314,16 +315,19 @@ public class GoogleMapsHookBuilder extends AbstactHookBuilder {
         }
     }
 
+    private static byte[] toByteArray(Iterable<Byte> x) {
+        var os = new ByteArrayOutputStream();
+        for (byte b : x) {
+            os.write(b);
+        }
+        return os.toByteArray();
+    }
+
     private static void dumpTextStructure(Object obj) {
         try {
             Field f = obj.getClass().getField("b");
             Iterable<Byte> structure = (Iterable<Byte>) f.get(obj);
-            var os = new ByteArrayOutputStream();
-            for (byte b : structure) {
-                os.write(b);
-            }
-            os.close();
-            var array = os.toByteArray();
+            var array = toByteArray(structure);
             ModuleMain.module.log("\n" + Util.hexdump(array));
             ModuleMain.module.log("\n" + Util.dumpProto(array));
         } catch (Exception ignore) {
@@ -339,17 +343,16 @@ public class GoogleMapsHookBuilder extends AbstactHookBuilder {
                 if (p.disableNetworkSynthesizer()) {
                     callback.returnAndSkip(false);
                 } else {
-                    var api = p.getVoiceVoxEngine();
+                    var api = p.getNvcexServer();
                     var p1 = callback.getArgs()[0];
                     var path = (String) callback.getArgs()[2];
                     boolean ret = false;
                     try {
-                        Field f = p1.getClass().getField("a");
-                        var text = (String) f.get(p1);
-                        text = text.replaceAll(" ", "");
-                        text = text.replaceAll("、、", "、");
-                        String json = api.audio_query(p.voiceboxStyleId, text);
-                        byte[] audio = api.synthesis(p.voiceboxStyleId, json);
+                        Field fa = p1.getClass().getField("a");
+                        Field fb = p1.getClass().getField("b");
+                        var text = (String) fa.get(p1);
+                        var bytes = toByteArray ((Iterable<Byte>)fb.get(p1));
+                        byte[] audio = api.tts(p.scenario, text, bytes);
                         try (var os = new FileOutputStream(path)) {
                             os.write(audio);
                         }
@@ -374,7 +377,7 @@ public class GoogleMapsHookBuilder extends AbstactHookBuilder {
     //
     static class SetVoiceNameHook implements XposedInterface.Hooker {
         public static void before(@NonNull XposedInterface.BeforeHookCallback callback) {
-            ModuleMain.module.log("method " + callback.getMember() + " called with " + List.of(callback.getArgs()));
+            //ModuleMain.module.log("method " + callback.getMember() + " called with " + List.of(callback.getArgs()));
         }
 
         public static void after(@NonNull XposedInterface.AfterHookCallback callback) {
@@ -394,7 +397,7 @@ public class GoogleMapsHookBuilder extends AbstactHookBuilder {
                             }
                         });
             }
-            ModuleMain.module.log("method " + callback.getMember() + " return with " + callback.getResult());
+            //ModuleMain.module.log("method " + callback.getMember() + " return with " + callback.getResult());
         }
     }
 }

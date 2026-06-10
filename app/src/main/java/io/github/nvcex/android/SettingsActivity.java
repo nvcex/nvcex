@@ -54,7 +54,7 @@ public class SettingsActivity extends AppCompatActivity {
     }
 
     public static class SettingsFragment extends PreferenceFragmentCompat {
-        private List<VoiceVoxEngineApi.Player> playerList;
+        private List<String> scenarioList;
 
         @Override
         public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
@@ -72,70 +72,65 @@ public class SettingsActivity extends AppCompatActivity {
                 button.setEnabled(false);
                 App.executor.execute(() -> {
                     var prefs = getPreferenceManager().getSharedPreferences();
-                    var api = new VoiceVoxEngineApi(
+                    var api = new NvcexServerApi(
                             prefs.getString("voicevox_engine_url", null),
                             prefs.getString("voicevox_engine_username", null),
                             prefs.getString("voicevox_engine_password", null));
                     try {
-                        var players = api.speakers();
+                        var scenarios = api.scenarios();
                         getActivity().runOnUiThread(() -> {
-                            Toast.makeText(getContext(), "voicevox api success", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(getContext(), "NvcexServer api success", Toast.LENGTH_SHORT).show();
                             button.setEnabled(true);
-                            updatePlayerList(players);
+                            updateScenarioList(scenarios);
                             var mapper = new ObjectMapper();
                             try {
                                 getPreferenceManager().getSharedPreferences()
                                         .edit()
-                                        .putString("voicevox_voices", mapper.writeValueAsString(players))
+                                        .putString("scenarios", mapper.writeValueAsString(scenarios))
                                         .apply();
                             } catch (JsonProcessingException ignore) {
                             }
                         });
                     } catch (IOException ioe) {
-                        Log.w(getClass().getName(), "players() failed", ioe);
+                        Log.w(getClass().getName(), "scenarios() failed", ioe);
                         getActivity().runOnUiThread(() -> {
-                            Toast.makeText(getContext(), "voicevox api failed " + ioe.getMessage(), Toast.LENGTH_SHORT).show();
+                            Toast.makeText(getContext(), "NvcexServer api failed " + ioe.getMessage(), Toast.LENGTH_SHORT).show();
                         });
                     }
                 });
                 return true;
             });
 
-            var players = getPreferenceManager().getSharedPreferences().getString("voicevox_voices", "[]");
+            var scenarios = getPreferenceManager().getSharedPreferences().getString("scenarios", "[]");
             var mapper = new ObjectMapper();
             try {
-                updatePlayerList(mapper.readValue(players, new TypeReference<List<VoiceVoxEngineApi.Player>>() {}));
+                updateScenarioList(mapper.readValue(scenarios, new TypeReference<List<String>>() {}));
             } catch (JsonProcessingException ignore) {
             }
         }
 
-        private void updatePlayerList(final List<VoiceVoxEngineApi.Player> players) {
-            this.playerList = players;
-            final var prefPlayer = (ListPreference)findPreference("player");
-            final var prefStyle = (ListPreference)findPreference("style");
-            prefPlayer.setEntries(players.stream().map(p -> p.name).toArray(String[]::new));
-            prefPlayer.setEntryValues(players.stream().map(p -> p.uuid).toArray(String[]::new));
-            prefPlayer.setOnPreferenceChangeListener((pref, v) -> {
-                return updateStyle((String)v);
-            });
-            updateStyle(prefPlayer.getValue());
+        private void updateScenarioList(final List<String> scenarios) {
+            this.scenarioList = scenarios;
+            final var prefPlayer = (ListPreference)findPreference("scenario");
+            prefPlayer.setEntries(scenarios.toArray(String[]::new));
+            prefPlayer.setEntryValues(scenarios.toArray(String[]::new));
         }
 
-        private boolean updateStyle(String playerId) {
-            final var prefStyle = (ListPreference)findPreference("style");
-            var player = this.playerList.stream().filter(p -> p.uuid.equals(playerId)).findFirst();
-            if (player.isPresent()) {
-                var styles = player.get().styles;
-                prefStyle.setEntries(styles.stream().map(s -> s.name).toArray(String[]::new));
-                var values = styles.stream().map(s -> Integer.toString(s.id)).toArray(String[]::new);
-                var defaultValue = values.length == 0 ? null : values[0];
-                prefStyle.setEntryValues(values);
-                var value = prefStyle.getValue();
-                prefStyle.setValue(Arrays.stream(values).filter(v -> v == value).findFirst().orElse(defaultValue));
-                return true;
-            } else {
-                return false;
-            }
-        }
+//        private boolean updateStyle(String playerId) {
+//            final var prefStyle = (ListPreference)findPreference("style");
+//            var player = this.playerList.stream().filter(p -> p.uuid.equals(playerId)).findFirst();
+//            if (player.isPresent()) {
+//                var styles = player.get().styles;
+//                prefStyle.setEntries(styles.stream().map(s -> s.name).toArray(String[]::new));
+//                var values = styles.stream().map(s -> Integer.toString(s.id)).toArray(String[]::new);
+//                var defaultValue = values.length == 0 ? null : values[0];
+//                prefStyle.setEntryValues(values);
+//                var value = prefStyle.getValue();
+//                prefStyle.setValue(Arrays.stream(values).filter(v -> v == value).findFirst().orElse(defaultValue));
+//                return true;
+//            } else {
+//                return false;
+//            }
+//        }
     }
 }

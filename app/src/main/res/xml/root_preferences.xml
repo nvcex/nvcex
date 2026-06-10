@@ -14,12 +14,8 @@
 
         <PreferenceCategory app:title="@string/voice_selection">
             <ListPreference
-                app:key="player"
-                app:title="@string/select_player"
-                app:useSimpleSummaryProvider="true" />
-            <ListPreference
-                app:key="style"
-                app:title="@string/select_style"
+                app:key="scenario"
+                app:title="@string/select_scenario"
                 app:useSimpleSummaryProvider="true" />
         </PreferenceCategory>
 
